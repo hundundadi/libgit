@@ -1,0 +1,188 @@
+<html>
+<head><meta charset="utf-8">CNS小程序测试</head>
+
+<body>
+<form>
+	<a href="javascript:void(0);" onclick="testAjax2()">测试提交</a><br />
+	<a href="javascript:void(0);" onclick="testAjax1()">测试克隆</a><br />
+	<a href="javascript:void(0);" onclick="testAjax3()">测试回退</a><br />
+	<a href="javascript:void(0);" onclick="testAjax4()">测试日志清单</a><br />
+	<a href="javascript:void(0);" onclick="testAjax5()">测试文件状态</a><br />
+	<a href="javascript:void(0);" onclick="testAjax6()">测试拉取</a><br />
+	<a href="javascript:void(0);" onclick="testAjax7()">测试文件内容上传</a><br />
+</form>
+</body>
+
+
+</html>
+<script language= "javascript" src="./jquery-3.1.1.min.js"></script>
+<script language="javascript">
+var json_data1={"_ProjectName":"testlibgit2","_UserName":"qilin","_Password":"kylin@123","_CloneFromRemote":"http://cnsgit.it.sunsheen.cn/qilin/testlibgit2.git"};
+function testAjax1(){
+	$.ajax({
+　　url:'http://localhost:9000/Clone',  //请求的URL
+　　timeout : 3000, //超时时间设置，单位毫秒
+　　type : 'post',  //请求方式，get或post
+　　data :JSON.stringify(json_data1),  //请求所传参数，json格式
+　　dataType:'json',//返回的数据格式scriptCharset: 'utf-8',
+　　success:function(data){ //请求成功的回调函数
+　　　　alert("成功");
+		console.log(data);
+　　},
+	error:function (err) {
+        alert("失败");
+		console.log(err);
+    },
+　　complete : function(XMLHttpRequest,status){ //请求完成后最终执行参数
+　　　　if(status=='timeout'){//超时,status还有success,error等值的情况
+ 　　　　　 ajaxTimeoutTest.abort();
+　　　　　  alert("超时");
+　　　　}
+　　}
+});
+} // hebing,buneng tijiao ,bengkui
+var json_data2={"_ProjectName":"testlibgit2","_UserName":"qilin","_Password":"kylin@123","_CommitEmail":"sss@www.com","_CommitContent":"提交2.txt文件","_FileList":[{"_File":"2.txt"}]};
+function testAjax2(){
+	$.ajax({
+　　url:'http://localhost:9000/Commit',  //请求的URL
+　　timeout : 3000, //超时时间设置，单位毫秒
+　　type : 'post',  //请求方式，get或post
+　　data :JSON.stringify(json_data2),  //请求所传参数，json格式
+　　dataType:'json',//返回的数据格式scriptCharset: 'utf-8',
+　　success:function(data){ //请求成功的回调函数
+　　　　alert("成功");
+		console.log(data);
+　　},
+	error:function (err) {
+        alert("失败");
+		console.log(err);
+    },
+　　complete : function(XMLHttpRequest,status){ //请求完成后最终执行参数
+　　　　if(status=='timeout'){//超时,status还有success,error等值的情况
+ 　　　　　 ajaxTimeoutTest.abort();
+　　　　　  alert("超时");
+　　　　}
+　　}
+});
+}
+var json_data3={"_ProjectName":"testlibgit2","_UserName":"qilin","_Password":"kylin@123","_CheckoutVersion":"c5ce46e7330b12a2f5315acec3c9c2df71077aa7","_FileList":[{"_File":"2.txt"}]};
+function testAjax3(){
+	$.ajax({
+　　url:'http://localhost:9000/Checkout',  //请求的URL
+　　timeout : 3000, //超时时间设置，单位毫秒
+　　type : 'post',  //请求方式，get或post
+　　data :JSON.stringify(json_data3),  //请求所传参数，json格式
+　　dataType:'json',//返回的数据格式scriptCharset: 'utf-8',
+　　success:function(data){ //请求成功的回调函数
+　　　　alert("成功");
+		console.log(data);
+　　},
+	error:function (err) {
+        alert("失败");
+		console.log(err);
+    },
+　　complete : function(XMLHttpRequest,status){ //请求完成后最终执行参数
+　　　　if(status=='timeout'){//超时,status还有success,error等值的情况
+ 　　　　　 ajaxTimeoutTest.abort();
+　　　　　  alert("超时");
+　　　　}
+　　}
+});
+}
+var json_data4={"_ProjectName":"testlibgit2","_UserName":"qilin","_Password":"kylin@123","_FileList":[{"_File":"README.md"}]};
+function testAjax4(){
+	$.ajax({
+　　url:'http://localhost:9000/Log',  //请求的URL
+　　timeout : 1000, //超时时间设置，单位毫秒
+　　type : 'post',  //请求方式，get或post
+　　data :JSON.stringify(json_data4),  //请求所传参数，json格式
+　　dataType:'json',//返回的数据格式scriptCharset: 'utf-8',
+　　success:function(data){ //请求成功的回调函数
+　　　　alert("成功");
+		console.log(data);
+　　},
+	error:function (err) {
+        alert("失败");
+		console.log(err);
+    },
+　　complete : function(XMLHttpRequest,status){ //请求完成后最终执行参数
+　　　　if(status=='timeout'){//超时,status还有success,error等值的情况
+ 　　　　　 ajaxTimeoutTest.abort();
+　　　　　  alert("超时");
+　　　　}
+　　}
+});
+}
+var json_data5={"_ProjectName":"testlibgit2","_UserName":"qilin","_Password":"kylin@123"};
+function testAjax5(){
+	$.ajax({
+　　url:'http://localhost:9000/Status',  //请求的URL
+　　//timeout : 3000, //超时时间设置，单位毫秒
+　　type : 'post',  //请求方式，get或post
+　　data :JSON.stringify(json_data5),  //请求所传参数，json格式
+　　dataType:'json',//返回的数据格式scriptCharset: 'utf-8',
+　　success:function(data){ //请求成功的回调函数
+　　　　alert("成功");
+		console.log(data);
+　　},
+	error:function (err) {
+        alert("失败");
+		console.log(err);
+    },
+　　complete : function(XMLHttpRequest,status){ //请求完成后最终执行参数
+　　　　if(status=='timeout'){//超时,status还有success,error等值的情况
+ 　　　　　// ajaxTimeoutTest.abort();
+　　　　　  alert("超时");
+　　　　}
+　　}
+});
+}
+var json_data6={"_ProjectName":"testlibgit2","_UserName":"qilin","_Password":"kylin@123","_CommitEmail":"sss@www.com","_CloneFromRemote":"http://172.18.210.50:8081/qilin/testlibgit2.git"};
+function testAjax6(){
+	$.ajax({
+　　url:'http://localhost:9000/Pull',  //请求的URL
+　　timeout : 3000, //超时时间设置，单位毫秒
+　　type : 'post',  //请求方式，get或post
+　　data :JSON.stringify(json_data6),  //请求所传参数，json格式
+　　dataType:'json',//返回的数据格式scriptCharset: 'utf-8',
+　　success:function(data){ //请求成功的回调函数
+　　　　alert("成功");
+		console.log(data);
+　　},
+	error:function (err) {
+        alert("失败");
+		console.log(err);
+    },
+　　complete : function(XMLHttpRequest,status){ //请求完成后最终执行参数
+　　　　if(status=='timeout'){//超时,status还有success,error等值的情况
+ 　　　　　// ajaxTimeoutTest.abort();
+　　　　　  alert("超时");
+　　　　}
+　　}
+});
+}
+var json_data7={"_ProjectName":"testlibgit2","_UserName":"qilin","_Password":"kylin@123","_FilePostUrl":"http://192.168.8.37:8888/CNS/api/rest/web/dcs/pdffiles","_FileList":[{"_File":"11.txt"}]};
+function testAjax7(){
+	$.ajax({
+　　url:'http://localhost:9000/UploadFile',  //请求的URL
+　　timeout : 3000, //超时时间设置，单位毫秒
+　　type : 'post',  //请求方式，get或post
+　　data :JSON.stringify(json_data7),  //请求所传参数，json格式
+　　dataType:'json',//返回的数据格式scriptCharset: 'utf-8',
+　　success:function(data){ //请求成功的回调函数
+　　　　alert("成功");
+		console.log(data);
+　　},
+	error:function (err) {
+        alert("失败");
+		console.log(err);
+    },
+　　complete : function(XMLHttpRequest,status){ //请求完成后最终执行参数
+　　　　if(status=='timeout'){//超时,status还有success,error等值的情况
+ 　　　　　// ajaxTimeoutTest.abort();
+　　　　　  alert("超时");
+　　　　}
+　　}
+});
+}
+</script>
