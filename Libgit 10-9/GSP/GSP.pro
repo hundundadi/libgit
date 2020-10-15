@@ -42,10 +42,10 @@ SOURCES += main.cpp \
     gspuploadfile.cpp
 
 include(./windowservice/qtservice.pri)
-LIBS += -L"D:\workspace\sunsheen\Libgit 10-9\GSP" -lgit2
+LIBS += -L"D:\workspace\sunsheen\libgit\Libgit 10-9\GSP" -lgit2
 
 INCLUDEPATH += ./qtwebserver
-LIBS += -L"D:\workspace\sunsheen\Libgit 10-9\GSP\staticlib" -llibqtwebserver
+LIBS += -L"D:\workspace\sunsheen\libgit\Libgit 10-9\GSP\staticlib" -llibqtwebserver
 
 HEADERS += \
     httpservice.h \

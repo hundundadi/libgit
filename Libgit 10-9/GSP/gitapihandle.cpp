@@ -185,6 +185,36 @@ SHUTDOWN:
     }
     return true;
 }
+
+// 调用查询本地git仓库所有文件状态
+int GitApiHandle::checkFileStatus(QString projectName, QString username, QString password)
+{
+    m_sUserName = username;
+    m_sPassword = password;
+    m_sPrjName = projectName;
+    m_FileList.clear();
+    qDebug() << "开始仓库文件状态查询。";
+    OptionsRepository();
+    int error = 0;
+    git_index* index = nullptr;
+    // init and open repository.
+    error = git2_InitAndOpen();
+    if(error < 0)
+    {
+        return error;
+    }
+    git_repository_index(&index, m_pGitRepository);
+
+    git_index_free(index);
+    // simple
+    error = git_status_foreach(m_pGitRepository, status_cb, nullptr);
+    if (error < 0)
+    {
+        return error;
+    }
+
+}
+
 // 获取一个文件下的所有文件
 FileStatus GitApiHandle::getRepostoryFileAndDir(QString path, FileStatus &pramfile, int &iGrade)
 {
@@ -1202,8 +1232,11 @@ bool GitApiHandle::gitPull(QString prjName, QString username, QString password, 
     merge_opt.flags = 0;
     merge_opt.file_flags = GIT_MERGE_FILE_STYLE_DIFF3;
     checkout_opt.checkout_strategy = GIT_CHECKOUT_FORCE|GIT_CHECKOUT_ALLOW_CONFLICTS;
+    error = git_status_foreach(repo, status_cb, nullptr);
 
     error = git_merge(repo, their_head, 1, &merge_opt, &checkout_opt);
+    error = git_status_foreach(repo, status_cb, nullptr);
+
     if (error < 0)
     {
         if (error != GIT_EMERGECONFLICT){
@@ -1333,6 +1366,7 @@ bool GitApiHandle::gitPull_1(QString prjName, QString username, QString password
     m_sUserName = username;
     m_sPassword = password;
     ExecuteResult stResult;stResult.content = "拉取成功！"; stResult.statusCode = "0";
+
     OptionsRepository();
     QByteArray ba_repoLocal = m_sLocalRep.toUtf8();
     git_libgit2_init();
@@ -1370,7 +1404,7 @@ bool GitApiHandle::gitPull_1(QString prjName, QString username, QString password
     merge_opt.flags = 0;
     merge_opt.file_flags = GIT_MERGE_FILE_STYLE_DIFF3;
     //checkout_opt.checkout_strategy = GIT_CHECKOUT_FORCE|GIT_CHECKOUT_ALLOW_CONFLICTS;
-    checkout_opt.checkout_strategy =GIT_CHECKOUT_FORCE ;//| GIT_CHECKOUT_USE_THEIRS;
+    checkout_opt.checkout_strategy =GIT_CHECKOUT_FORCE | GIT_CHECKOUT_USE_THEIRS;
 
     error = git_merge(repo, their_head, 1, &merge_opt, &checkout_opt);
     if (error < 0)
@@ -1385,37 +1419,177 @@ bool GitApiHandle::gitPull_1(QString prjName, QString username, QString password
     if (error < 0) {
         goto SHUTDOWN;
     }
-    if (git_index_has_conflicts(index))
-    {
-        const git_index_entry* ancestor_out = nullptr;
-        const git_index_entry* our_out = nullptr;
-        const git_index_entry* their_out = nullptr;
+//    if (git_index_has_conflicts(index))
+//    {
+//        const git_index_entry* ancestor_out = nullptr;
+//        const git_index_entry* our_out = nullptr;
+//        const git_index_entry* their_out = nullptr;
 
-        git_index_conflict_iterator_new(&conflict_iterator, index);
+//        git_index_conflict_iterator_new(&conflict_iterator, index);
 
-        while (git_index_conflict_next(&ancestor_out, &our_out, &their_out, conflict_iterator) != GIT_ITEROVER)
-        {
-            isConflict = true;
-            if (ancestor_out){
-                stResult.conflictFileList.append(QString(ancestor_out->path));
-                m_confFileList.append(QString(ancestor_out->path));
-            }
-            else if (our_out->path) {
-                stResult.conflictFileList.append(QString(our_out->path));
-                m_confFileList.append(QString(our_out->path));
-            }
-            else if (their_out->path) {
-                stResult.conflictFileList.append(QString(their_out->path));
-                m_confFileList.append(QString(their_out->path));
-            }
+//        while (git_index_conflict_next(&ancestor_out, &our_out, &their_out, conflict_iterator) != GIT_ITEROVER)
+//        {
+//            isConflict = true;
+//            if (ancestor_out){
+//                stResult.conflictFileList.append(QString(ancestor_out->path));
+//                m_confFileList.append(QString(ancestor_out->path));
+//            }
+//            else if (our_out->path) {
+//                stResult.conflictFileList.append(QString(our_out->path));
+//                m_confFileList.append(QString(our_out->path));
+//            }
+//            else if (their_out->path) {
+//                stResult.conflictFileList.append(QString(their_out->path));
+//                m_confFileList.append(QString(their_out->path));
+//            }
+//        }
+
+//        // git checkout --theirs <file>
+//        git_checkout_options opt = GIT_CHECKOUT_OPTIONS_INIT;
+//        opt.checkout_strategy |= GIT_CHECKOUT_USE_THEIRS;//GIT_CHECKOUT_USE_OURS;
+//        git_checkout_index(repo, index, &opt);
+
+//        git_index_conflict_iterator_free(conflict_iterator);
+//    }
+    git_commit_lookup(&their_commit, repo, git_reference_target(origin_master));
+    git_commit_lookup(&our_commit, repo, git_reference_target(local_master));
+    git_signature_now(&me, username.toUtf8().constData(), commitEmail.toUtf8().constData());
+    // add and commit 添加工程下的变动到索引（除新建的）
+    if (fileList.isEmpty()) {
+        error = git_index_update_all(index, nullptr, nullptr, nullptr); //可能会导致仓库下所有的变动，新增成为提交
+        if (error < 0) {
+            goto SHUTDOWN;
         }
+        error = git_index_write(index);
+        if (error < 0) {
+            goto SHUTDOWN;
+        }
+        error = git_index_write_tree(&new_tree_id, index);
+        if (error < 0) {
+            goto SHUTDOWN;
+        }
+        error = git_tree_lookup(&new_tree, repo, &new_tree_id);
+        if (error < 0) {
+            goto SHUTDOWN;
+        }
+        error = git_commit_create_v(&commit_id, repo, git_reference_name(local_master), me, me, "UTF-8", "Merge branch origin master", new_tree, 2, our_commit, their_commit);
+    }
+    else {
+        m_pGitRepository = repo;
+        error = git2_AddToTree(&new_tree, fileList); // 添加当前 需同步的文件到索引
+        if (error < 0) {
+            goto SHUTDOWN;
+        }
+        QString tmp = "merge and " + m_scommitLog;
+        error = git_commit_create_v(&commit_id, repo, git_reference_name(local_master), me, me, "UTF-8", tmp.toUtf8().constData(), new_tree, 2, our_commit, their_commit);
+    }
 
-        // git checkout --theirs <file>
-        git_checkout_options opt = GIT_CHECKOUT_OPTIONS_INIT;
-        opt.checkout_strategy |= GIT_CHECKOUT_USE_OURS;
-        git_checkout_index(repo, index, &opt);
+    git_repository_state_cleanup(repo);
+SHUTDOWN:
+    if (error < 0) {
+        emit signal_Error(git2_ExecuteError(error));
+    }
+    git_repository_state_cleanup(repo);
+    git_index_free(index);
+    git_tree_free(new_tree);
+    git_commit_free(their_commit);
+    git_commit_free(our_commit);
+    git_remote_free(remote);
+    git_reference_free(origin_master);
+    git_reference_free(local_master);
+    git_repository_free(repo);
+    git_libgit2_shutdown();
+    if (isConflict) {
+        stResult.content = "文件有冲突，请解决！";
+        stResult.statusCode = "-1";
+        emit signal_CommitResult(stResult);
+        return false;
+    }
+    else if (!isConflict && error >= 0) {
+        emit signal_CommitResult(stResult);
+    }
+    return true;
+}
 
-        git_index_conflict_iterator_free(conflict_iterator);
+
+// 拉取远程仓库 并 合并
+bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password, QString commitEmail, QStringList fileList, bool isWeb)
+{
+    int error = 0;bool isConflict = false;
+    git_fetch_options fetch_opts = GIT_FETCH_OPTIONS_INIT;
+    git_merge_options merge_opt = GIT_MERGE_OPTIONS_INIT;
+    git_checkout_options checkout_opt = GIT_CHECKOUT_OPTIONS_INIT;
+    git_repository *repo = nullptr;
+    git_index* index = nullptr;
+    git_index_conflict_iterator* conflict_iterator = nullptr;
+    git_commit* their_commit = nullptr;
+    git_commit* our_commit = nullptr;
+    git_tree* new_tree = nullptr;
+    git_signature* me = nullptr;
+    git_remote* remote = nullptr;
+    git_reference* origin_master = nullptr;
+    git_reference* local_master = nullptr;
+    const git_annotated_commit* their_head[10];
+    git_oid new_tree_id;
+    git_oid commit_id;
+    //char *refspec = "refs/heads/master";
+    //const git_strarray refspecs = { &refspec, 1 };
+    m_sPrjName = prjName;
+    m_sUserName = username;
+    m_sPassword = password;
+    ExecuteResult stResult;stResult.content = "拉取成功！"; stResult.statusCode = "0";
+
+    OptionsRepository();
+    QByteArray ba_repoLocal = m_sLocalRep.toUtf8();
+    git_libgit2_init();
+    error = git_repository_open(&repo, ba_repoLocal.constData());
+    if (error < 0) {
+        goto SHUTDOWN;
+    }
+    // get a remote
+    error = git_remote_lookup(&remote, repo, "origin");//
+    if (error < 0) {
+            goto SHUTDOWN;
+    }
+    fetch_opts.callbacks.credentials = cred_acquire_cb_clone;
+    error = git_remote_fetch(remote, nullptr, &fetch_opts, "fetch");//refspecs
+    if (error < 0) {
+        goto SHUTDOWN;
+    }
+    error = git_branch_lookup(&origin_master, repo, "origin/master", GIT_BRANCH_REMOTE);
+    if (error < 0) {
+        goto SHUTDOWN;
+    }
+    error = git_branch_lookup(&local_master, repo, "master", GIT_BRANCH_LOCAL);
+    if (error < 0) {
+        goto SHUTDOWN;
+    }
+
+    error = git_repository_set_head(repo, git_reference_name(local_master));
+    if (error < 0) {
+        goto SHUTDOWN;
+    }
+    error = git_annotated_commit_from_ref((git_annotated_commit **)&their_head[0], repo, origin_master);
+    if (error < 0) {
+        goto SHUTDOWN;
+    }
+    merge_opt.flags = 0;
+    merge_opt.file_flags = GIT_MERGE_FILE_STYLE_DIFF3;
+    //checkout_opt.checkout_strategy = GIT_CHECKOUT_FORCE|GIT_CHECKOUT_ALLOW_CONFLICTS;
+    checkout_opt.checkout_strategy =GIT_CHECKOUT_FORCE | GIT_CHECKOUT_USE_THEIRS;
+
+    error = git_merge(repo, their_head, 1, &merge_opt, &checkout_opt);
+    if (error < 0)
+    {
+        if (error != GIT_EMERGECONFLICT){
+            goto SHUTDOWN;
+        }
+    }
+
+    // reslove conflicts
+    error = git_repository_index(&index, repo);
+    if (error < 0) {
+        goto SHUTDOWN;
     }
     git_commit_lookup(&their_commit, repo, git_reference_target(origin_master));
     git_commit_lookup(&our_commit, repo, git_reference_target(local_master));
@@ -1449,6 +1623,8 @@ bool GitApiHandle::gitPull_1(QString prjName, QString username, QString password
         QString tmp = "merge and " + m_scommitLog;
         error = git_commit_create_v(&commit_id, repo, git_reference_name(local_master), me, me, "UTF-8", tmp.toUtf8().constData(), new_tree, 2, our_commit, their_commit);
     }
+
+    git_repository_state_cleanup(repo);
 SHUTDOWN:
     if (error < 0) {
         emit signal_Error(git2_ExecuteError(error));
@@ -1474,3 +1650,4 @@ SHUTDOWN:
     }
     return true;
 }
+

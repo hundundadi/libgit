@@ -14,12 +14,15 @@ public:
     virtual ~GspCommit();
 
     void CommitFileToRemote(QString prjName, QString username, QString password, QString commitEmail, QString commitContent, QStringList fileList);
+    void CommitFileToLocal(QString prjName, QString username, QString password, QString commitEmail, QString commitContent, QStringList fileList);
 protected:
     int lg2_add(git_repository *repo, int argc, char **argv);
     int lg2_commit(git_repository *repo, int argc, char **argv);
     int lg2_push(git_repository *repo, int argc, char **argv, QStringList fileList);
 
     git_oid m_commit_oid;
+    QStringList g_fileList;
+
 private:
     QString m_commitLog;
     QString m_prjName;

@@ -63,11 +63,64 @@ DOWN:
     }
 }
 
+
+void GspCommit::CommitFileToLocal(QString prjName, QString username, QString password, QString commitEmail, QString commitContent, QStringList fileList)
+{
+    g_userName = username;
+    g_password = password;
+    m_userInfo = username;
+    m_userEmail = commitEmail;
+    m_prjName = prjName;
+    m_commitLog = commitContent;
+
+    RW_ConfigFile::getInstence()->reReadRepositoryPath();
+    QString tmpLocal = RW_ConfigFile::getInstence()->getRepositoryPath() + prjName;
+    QByteArray ba_repPath = tmpLocal.toUtf8();
+    git_repository* rep = nullptr;
+    int error = 0;
+    char* addArgv[2] = {nullptr};
+    QByteArray ba_Content = commitContent.toUtf8();
+    char* commitArgv[3] = {"commit", "-m", ba_Content.data()};
+    git_libgit2_init();
+    error = git_repository_open(&rep, ba_repPath.constData());
+    if (error < 0) {
+        goto DOWN;
+    }
+    if (error < 0)
+    {
+        emit signal_Error(git2_ExecuteError(error));
+    }
+    // add xxx
+    addArgv[0] = "add";
+    for (int index = 0; index < fileList.size(); index++) {
+        QString tmpFile = fileList.at(index);
+        QByteArray ba_file = tmpFile.toUtf8();
+        addArgv[1] = ba_file.data();
+        error = lg2_add(rep, 2, addArgv);
+        if (error < 0) {
+            goto DOWN;
+        }
+    }
+    // commit -m "content"
+    error = lg2_commit(rep, 3, commitArgv);
+    if (error < 0) {
+        goto DOWN;
+    }
+
+DOWN:
+    if (rep) {
+        git_repository_free(rep);
+        git_libgit2_shutdown();
+//        if (error >= 0)
+//            emit signal_CommitResult(stResult);
+    }
+}
+
+
 enum index_mode {
     INDEX_NONE,
     INDEX_ADD,
 };
-
 struct index_options {
     int dry_run;
     int verbose;

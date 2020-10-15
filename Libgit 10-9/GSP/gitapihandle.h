@@ -14,6 +14,7 @@
 #include "gitcmdhandle.h"
 #include "define.h"
 #include "gsplog.h"
+#include "gspcommit.h"
 
 extern CommitLog g_commitLog;
 
@@ -25,8 +26,10 @@ public:
 
     // 获取存储库文件状态
     bool gitStatus(QString projectName, QString username, QString password);
+    int checkFileStatus(QString projectName, QString username, QString password);
     // 提交
     bool gitCommit(QString prjName, QString username, QString password, QString commitEmail, QString commitContent, QStringList fileList);
+
     // 克隆
     bool gitClone(QString userName, QString password, QString remote, QString prjName);
     // 版本回退
@@ -36,6 +39,7 @@ public:
     // 远程拉取
     bool gitPull(QString prjName, QString username, QString password, QString commitEmail, QStringList fileList, bool isWeb = false);
     bool gitPull_1(QString prjName, QString username, QString password, QString commitEmail, QStringList fileList, bool isWeb = false);
+    bool gitPull_2(QString prjName, QString username, QString password, QString commitEmail, QStringList fileList, bool isWeb = false);
 public:
     bool updateWebPage();
     QString caculateSuitFileSizeUnit(qint64 size);
@@ -44,6 +48,7 @@ private:
     explicit GitApiHandle(QObject *parent = nullptr);
     ~GitApiHandle();
     static GitApiHandle* m_pInstence;
+    // 获取存储库文件状态
 signals:
     void signal_FileStatus(FileStatus fileStatusList);
     void signal_CommitResult(ExecuteResult stResult);
