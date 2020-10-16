@@ -104,12 +104,12 @@ GIT_BEGIN_DECL
  *   and write through existing symbolic links.
  */
 typedef enum {
-	GIT_CHECKOUT_NONE = 0, /**< default is a dry run, no actual updates */
+        GIT_CHECKOUT_NONE = 0, /**< default is a dry run, no actual updates 默认情况下是演练，没有实际的更新*/
 
 	/**
-	 * Allow safe updates that cannot overwrite uncommitted data.
+         * Allow safe updates that cannot overwrite uncommitted data.允许无法覆盖未提交数据的安全更新。
 	 * If the uncommitted changes don't conflict with the checked out files,
-	 * the checkout will still proceed, leaving the changes intact.
+         * the checkout will still proceed, leaving the changes intact.如果未提交的更改与签出的文件没有冲突，签出仍将继续进行，保持更改不变。
 	 *
 	 * Mutually exclusive with GIT_CHECKOUT_FORCE.
 	 * GIT_CHECKOUT_FORCE takes precedence over GIT_CHECKOUT_SAFE.
@@ -117,7 +117,7 @@ typedef enum {
 	GIT_CHECKOUT_SAFE = (1u << 0),
 
 	/**
-	 * Allow all updates to force working directory to look like index.
+         * Allow all updates to force working directory to look like index.允许所有更新强迫工作目录看起来像索引。
 	 *
 	 * Mutually exclusive with GIT_CHECKOUT_SAFE.
 	 * GIT_CHECKOUT_FORCE takes precedence over GIT_CHECKOUT_SAFE.
@@ -125,65 +125,65 @@ typedef enum {
 	GIT_CHECKOUT_FORCE = (1u << 1),
 
 
-	/** Allow checkout to recreate missing files */
+        /** Allow checkout to recreate missing files 允许签出重新创建丢失的文件*/
 	GIT_CHECKOUT_RECREATE_MISSING = (1u << 2),
 
-	/** Allow checkout to make safe updates even if conflicts are found */
+        /** Allow checkout to make safe updates even if conflicts are found 即使发现冲突，也允许签出进行安全更新*/
 	GIT_CHECKOUT_ALLOW_CONFLICTS = (1u << 4),
 
-	/** Remove untracked files not in index (that are not ignored) */
+        /** Remove untracked files not in index (that are not ignored) 删除不在索引中的未跟踪文件(未被忽略)*/
 	GIT_CHECKOUT_REMOVE_UNTRACKED = (1u << 5),
 
-	/** Remove ignored files not in index */
+        /** Remove ignored files not in index 删除被忽略的文件不在索引中*/
 	GIT_CHECKOUT_REMOVE_IGNORED = (1u << 6),
 
-	/** Only update existing files, don't create new ones */
+        /** Only update existing files, don't create new ones 只更新现有文件，不创建新文件*/
 	GIT_CHECKOUT_UPDATE_ONLY = (1u << 7),
 
 	/**
-	 * Normally checkout updates index entries as it goes; this stops that.
-	 * Implies `GIT_CHECKOUT_DONT_WRITE_INDEX`.
+         * Normally checkout updates index entries as it goes; this stops that.通常情况下，检出更新索引项;
+         * Implies `GIT_CHECKOUT_DONT_WRITE_INDEX`.这意味着' GIT_CHECKOUT_DONT_WRITE_INDEX '。
 	 */
 	GIT_CHECKOUT_DONT_UPDATE_INDEX = (1u << 8),
 
-	/** Don't refresh index/config/etc before doing checkout */
+        /** Don't refresh index/config/etc before doing checkout 在做检出之前不要刷新索引/配置/等等*/
 	GIT_CHECKOUT_NO_REFRESH = (1u << 9),
 
-	/** Allow checkout to skip unmerged files */
+        /** Allow checkout to skip unmerged files 允许签出跳过未合并的文件 */
 	GIT_CHECKOUT_SKIP_UNMERGED = (1u << 10),
-	/** For unmerged files, checkout stage 2 from index */
+        /** For unmerged files, checkout stage 2 from index 对于未合并的文件，从索引中签出策略2*/
 	GIT_CHECKOUT_USE_OURS = (1u << 11),
-	/** For unmerged files, checkout stage 3 from index */
+        /** For unmerged files, checkout stage 3 from index 对于未合并的文件，从索引中签出策略3*/
 	GIT_CHECKOUT_USE_THEIRS = (1u << 12),
 
-	/** Treat pathspec as simple list of exact match file paths */
+        /** Treat pathspec as simple list of exact match file paths 将pathspec视为精确匹配文件路径的简单列表*/
 	GIT_CHECKOUT_DISABLE_PATHSPEC_MATCH = (1u << 13),
 
-	/** Ignore directories in use, they will be left empty */
+        /** Ignore directories in use, they will be left empty 忽略正在使用的目录，它们将是空的*/
 	GIT_CHECKOUT_SKIP_LOCKED_DIRECTORIES = (1u << 18),
 
-	/** Don't overwrite ignored files that exist in the checkout target */
+        /** Don't overwrite ignored files that exist in the checkout target 不要覆盖存在于签出目标中的被忽略的文件*/
 	GIT_CHECKOUT_DONT_OVERWRITE_IGNORED = (1u << 19),
 
-	/** Write normal merge files for conflicts */
+        /** Write normal merge files for conflicts 编写冲突的普通合并文件*/
 	GIT_CHECKOUT_CONFLICT_STYLE_MERGE = (1u << 20),
 
-	/** Include common ancestor data in diff3 format files for conflicts */
+        /** Include common ancestor data in diff3 format files for conflicts 在diff3格式文件中包含冲突的共同祖先数据*/
 	GIT_CHECKOUT_CONFLICT_STYLE_DIFF3 = (1u << 21),
 
-	/** Don't overwrite existing files or folders */
+        /** Don't overwrite existing files or folders 不要覆盖现有的文件或文件夹*/
 	GIT_CHECKOUT_DONT_REMOVE_EXISTING = (1u << 22),
 
-	/** Normally checkout writes the index upon completion; this prevents that. */
+        /** Normally checkout writes the index upon completion; this prevents that.这可以防止。通常签出完成后写入索引 */
 	GIT_CHECKOUT_DONT_WRITE_INDEX = (1u << 23),
 
 	/**
-	 * THE FOLLOWING OPTIONS ARE NOT YET IMPLEMENTED
+         * THE FOLLOWING OPTIONS ARE NOT YET IMPLEMENTED 以下选项尚未实现
 	 */
 
-	/** Recursively checkout submodules with same options (NOT IMPLEMENTED) */
+        /** Recursively checkout submodules with same options (NOT IMPLEMENTED) 递归地检出具有相同选项的子模块(未实现)*/
 	GIT_CHECKOUT_UPDATE_SUBMODULES = (1u << 16),
-	/** Recursively checkout submodules if HEAD moved in super repo (NOT IMPLEMENTED) */
+        /** Recursively checkout submodules if HEAD moved in super repo (NOT IMPLEMENTED) 果在super repo中头部移动(未实现)递归检出子模块*/
 	GIT_CHECKOUT_UPDATE_SUBMODULES_IF_CHANGED = (1u << 17),
 
 } git_checkout_strategy_t;

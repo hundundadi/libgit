@@ -1511,7 +1511,6 @@ SHUTDOWN:
     return true;
 }
 
-
 // 拉取远程仓库 并 合并
 bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password, QString commitEmail, QStringList fileList, bool isWeb)
 {
@@ -1538,7 +1537,6 @@ bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password
     m_sUserName = username;
     m_sPassword = password;
     ExecuteResult stResult;stResult.content = "拉取成功！"; stResult.statusCode = "0";
-
     OptionsRepository();
     QByteArray ba_repoLocal = m_sLocalRep.toUtf8();
     git_libgit2_init();
@@ -1552,19 +1550,22 @@ bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password
             goto SHUTDOWN;
     }
     fetch_opts.callbacks.credentials = cred_acquire_cb_clone;
+    fetch_opts.prune = GIT_FETCH_PRUNE;
     error = git_remote_fetch(remote, nullptr, &fetch_opts, "fetch");//refspecs
     if (error < 0) {
         goto SHUTDOWN;
     }
+    //获取远程更新下来的分支
     error = git_branch_lookup(&origin_master, repo, "origin/master", GIT_BRANCH_REMOTE);
     if (error < 0) {
         goto SHUTDOWN;
     }
+    //获取本地的分支
     error = git_branch_lookup(&local_master, repo, "master", GIT_BRANCH_LOCAL);
     if (error < 0) {
         goto SHUTDOWN;
     }
-
+    //先将本地 master 设为 head
     error = git_repository_set_head(repo, git_reference_name(local_master));
     if (error < 0) {
         goto SHUTDOWN;
@@ -1575,25 +1576,84 @@ bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password
     }
     merge_opt.flags = 0;
     merge_opt.file_flags = GIT_MERGE_FILE_STYLE_DIFF3;
-    //checkout_opt.checkout_strategy = GIT_CHECKOUT_FORCE|GIT_CHECKOUT_ALLOW_CONFLICTS;
-    checkout_opt.checkout_strategy =GIT_CHECKOUT_FORCE | GIT_CHECKOUT_USE_THEIRS;
-
+    checkout_opt = GIT_CHECKOUT_OPTIONS_INIT;
+    checkout_opt.checkout_strategy = GIT_CHECKOUT_FORCE|GIT_CHECKOUT_ALLOW_CONFLICTS|GIT_CHECKOUT_USE_THEIRS;
+    error = git_status_foreach(repo, status_cb, nullptr);
     error = git_merge(repo, their_head, 1, &merge_opt, &checkout_opt);
     if (error < 0)
     {
-        if (error != GIT_EMERGECONFLICT){
+        if (error == GIT_EMERGECONFLICT){
+            // reslove conflicts
+            error = git_repository_index(&index, repo);
+            if (error < 0) {
+                goto SHUTDOWN;
+            }
+            if (git_index_has_conflicts(index))
+            {
+                const git_index_entry* ancestor_out = nullptr;
+                const git_index_entry* our_out = nullptr;
+                const git_index_entry* their_out = nullptr;
+
+                git_index_conflict_iterator_new(&conflict_iterator, index);
+
+                while (git_index_conflict_next(&ancestor_out, &our_out, &their_out, conflict_iterator) != GIT_ITEROVER)
+                {
+                    isConflict = true;
+                    if (ancestor_out){
+                        stResult.conflictFileList.append(QString(ancestor_out->path));
+                        m_confFileList.append(QString(ancestor_out->path));
+                    }
+                    else if (our_out->path) {
+                        stResult.conflictFileList.append(QString(our_out->path));
+                        m_confFileList.append(QString(our_out->path));
+                    }
+                    else if (their_out->path) {
+                        stResult.conflictFileList.append(QString(their_out->path));
+                        m_confFileList.append(QString(their_out->path));
+                    }
+                }
+
+                // git checkout --theirs <file>
+                git_checkout_options opt = GIT_CHECKOUT_OPTIONS_INIT;
+                opt.checkout_strategy |= GIT_CHECKOUT_USE_THEIRS;
+                git_checkout_index(repo, index, &opt);
+
+                git_index_conflict_iterator_free(conflict_iterator);
+            }
+        }else if(error == GIT_ECONFLICT){
+
+            //获取文件状态
+            checkFileStatus(prjName,username,password);
+            QStringList mfileList ; //需要提交的文件
+            foreach (FileStatus fS,m_FileList) {
+                if(!fS.status.contains("deleted file")) {
+                    qDebug() << "fileName: "<<fS.file;
+                    qDebug() << "fileStatus: "<< fS.status;
+                    mfileList.append(fS.file);
+                }
+
+            }
+            //拉取之前先做一个提交到本地的操作
+            GspCommit *obj = new GspCommit;
+            obj->CommitFileToLocal(prjName,username,password,commitEmail,nullptr,mfileList);
+
+            //重新拉取
+            gitPull_2(prjName,username,password,commitEmail,fileList,true);
+            return true;
+        }else{
             goto SHUTDOWN;
         }
     }
+    error = git_status_foreach(repo, status_cb, nullptr);
 
-    // reslove conflicts
+
+    git_commit_lookup(&their_commit, repo, git_reference_target(origin_master));
+    git_commit_lookup(&our_commit, repo, git_reference_target(local_master));
+    git_signature_now(&me, username.toUtf8().constData(), commitEmail.toUtf8().constData());
     error = git_repository_index(&index, repo);
     if (error < 0) {
         goto SHUTDOWN;
     }
-    git_commit_lookup(&their_commit, repo, git_reference_target(origin_master));
-    git_commit_lookup(&our_commit, repo, git_reference_target(local_master));
-    git_signature_now(&me, username.toUtf8().constData(), commitEmail.toUtf8().constData());
     // add and commit 添加工程下的变动到索引（除新建的）
     if (fileList.isEmpty()) {
         error = git_index_update_all(index, nullptr, nullptr, nullptr); //可能会导致仓库下所有的变动，新增成为提交
@@ -1623,6 +1683,7 @@ bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password
         QString tmp = "merge and " + m_scommitLog;
         error = git_commit_create_v(&commit_id, repo, git_reference_name(local_master), me, me, "UTF-8", tmp.toUtf8().constData(), new_tree, 2, our_commit, their_commit);
     }
+
 
     git_repository_state_cleanup(repo);
 SHUTDOWN:
