@@ -96,6 +96,9 @@ ExecuteResult GitApiHandle::git2_ExecuteError(int error)
     strError = "Error: " + QString::number(error) + " / " + QString::number(e->klass) + " : " + e->message;
     stResult.content = strError;
     stResult.statusCode = QString::number(error);
+    //qDebug()<< "错误码： "<<QString::number(error);
+    //qDebug()<< "错误信息： "<<strError;
+
     return stResult;
 }
 
@@ -343,8 +346,77 @@ bool GitApiHandle::updateFileStatus(QStringList repFileList, FileStatus &fileLis
     }
     return false;
 }
+
+
+bool GitApiHandle::updateFileStatus_1(QStringList repFileList, FileStatus &fileList)
+{
+    int grade = 0;
+
+    foreach (QString strFileName, repFileList) {
+        QStringList tmpFileList = repFileList;
+        QString firstFile = tmpFileList.first();
+        tmpFileList.removeFirst();
+        for (int i = 0; i < fileList.children.size(); i ++) {
+            if (!tmpFileList.isEmpty()) { // 文件夹
+                m_bRepSamePath = false; // 路径未必一致
+                //没有子对象的有两种情况：1.是文件；2.本地文件夹中的文件已经删除(未提交)，此时也无子对象
+                if (!fileList.children[i].children.isEmpty()) {
+                    if (strFileName == fileList.children[i].file) {
+                        m_bRepSamePath = true; // 路径一致
+                        m_strDir_QUUID = fileList.children[i].deptid;
+                        if(updateFileStatus_1(tmpFileList, fileList.children[i]))
+                        return true;
+                    }
+                }else{
+                    if(firstFile == fileList.children[i].file){
+                        grade = fileList.children[i].grade.toInt()+1;
+                        AddRepoDeletedFile_1(tmpFileList,  fileList.children[i],grade);
+                        return true;
+
+                    }
+                }
+            }
+            else { // 文件
+                if (strFileName == fileList.children[i].file) {
+                    fileList.children[i].status = m_strCurrentStatus;
+                    return true;
+                }
+                else {
+                    if (m_bRepDeletedFile && m_bRepSamePath && i == (fileList.children.size()-1)) {
+                        FileStatus stRepDeletedFile;
+                        stRepDeletedFile.file = strFileName;
+                        stRepDeletedFile.grade = fileList.children[i].grade;
+                        stRepDeletedFile.deptid = QUuid::createUuid().toString();
+                        stRepDeletedFile.belongto = fileList.children[i].belongto;
+                        stRepDeletedFile.date = "";
+                        stRepDeletedFile.size = "";
+                        QString tmpPath = fileList.children[i].relativepath;
+                        tmpPath.replace(fileList.children[i].file, strFileName);
+                        stRepDeletedFile.relativepath = tmpPath;
+                        GspLog* logObj = new GspLog;
+                        logObj->Log(m_sPrjName, m_sUserName, m_sPassword, QStringList(stRepDeletedFile.relativepath));
+                        stRepDeletedFile.user = g_commitLog.author;
+                        stRepDeletedFile.version = g_commitLog.commit_info;
+                        g_commitLog.author.clear();
+                        g_commitLog.commit_info.clear();
+                        g_commitLog.commit_sha.clear();
+                        g_commitLog.dateTime.clear();
+                        g_commitLog.email.clear();
+                        g_commitLog.mergeFrom.clear();
+                        delete logObj;
+                        stRepDeletedFile.status = m_strCurrentStatus;
+                        fileList.children.append(stRepDeletedFile);
+                        m_strDir_QUUID.clear();// 当被删除的找到文件，并添加后，应清空uuid
+                    }
+                    continue;
+                }
+            }
+        }
+    }
+    return false;
+}
 //仓库顶层文件夹或文件夹下文件 添加信息
-// 文件夹存储 新建 apped + 文件存储 新建 apped到文件夹
+// 文件夹存储 新建 apped + 文件存储 新建 apped到文件夹AddRepoDeletedFile(strList, fileAndDirInfo, grade);
 void GitApiHandle::AddRepoDeletedFile(QStringList repFileList, FileStatus &fileList, int &iGrade) {
     QString strFileName = repFileList.first();
     QStringList tmpFileList = repFileList;
@@ -395,6 +467,67 @@ void GitApiHandle::AddRepoDeletedFile(QStringList repFileList, FileStatus &fileL
         m_strRelativePath.clear();
     }
 }
+void GitApiHandle::AddRepoDeletedFile_1(QStringList repFileList, FileStatus &fileList, int &iGrade) {
+    QString strFileName = repFileList.first();
+    QStringList tmpFileList = repFileList;
+    tmpFileList.removeFirst();
+    if (!tmpFileList.isEmpty()) {
+        FileStatus tmpDirStatus;
+        if (fileList.relativepath.endsWith('/'))
+            tmpDirStatus.belongto = fileList.relativepath.split('/').at(fileList.relativepath.split('/').size() - 2);
+        else
+            tmpDirStatus.belongto = fileList.file;
+        m_strRelativePath += strFileName + "/";
+
+        tmpDirStatus.file = strFileName;
+        tmpDirStatus.grade = QString::number(iGrade);
+        tmpDirStatus.deptid = QUuid::createUuid().toString();
+        tmpDirStatus.date = "";
+        tmpDirStatus.size = "";
+        tmpDirStatus.relativepath = m_strRelativePath;
+        iGrade++;
+        AddRepoDeletedFile(tmpFileList, tmpDirStatus, iGrade);
+        iGrade--;
+        fileList.children.append(tmpDirStatus);
+    }
+    else {
+        FileStatus tmpFileStatus;
+        if (fileList.relativepath.endsWith('/'))
+            tmpFileStatus.belongto = fileList.relativepath.split('/').at(fileList.relativepath.split('/').size() - 2);
+        else
+            tmpFileStatus.belongto = fileList.file;
+
+        if(strFileName == ""||strFileName == nullptr){
+            m_strRelativePath += fileList.file+"/"+strFileName;
+
+        }else{
+            m_strRelativePath += strFileName;
+
+        }
+
+        tmpFileStatus.file = strFileName;
+        tmpFileStatus.grade = QString::number(iGrade);
+        tmpFileStatus.deptid = QUuid::createUuid().toString();
+        tmpFileStatus.date = "";
+        tmpFileStatus.size = "";
+        tmpFileStatus.relativepath = m_strRelativePath;
+        GspLog* logObj = new GspLog;
+        logObj->Log(m_sPrjName, m_sUserName, m_sPassword, QStringList(tmpFileStatus.relativepath));
+        tmpFileStatus.user = g_commitLog.author;
+        tmpFileStatus.version = g_commitLog.commit_info;
+        g_commitLog.author.clear();
+        g_commitLog.commit_info.clear();
+        g_commitLog.commit_sha.clear();
+        g_commitLog.dateTime.clear();
+        g_commitLog.email.clear();
+        g_commitLog.mergeFrom.clear();
+        delete logObj;
+        tmpFileStatus.status = m_strCurrentStatus;
+        fileList.children.append(tmpFileStatus);
+        m_strRelativePath.clear();
+    }
+}
+
 // uuid对应的文件夹下文件 添加信息
 void GitApiHandle::AddRepoDeletedDir(QStringList repFileList, FileStatus &fileList){
     if (!m_strDir_QUUID.isEmpty()) {
@@ -429,7 +562,7 @@ bool GitApiHandle::updateWebPage()
             m_bRepSamePath = true;
             m_bRepDeletedFile = true;
         }
-        bool isSec = updateFileStatus(strList, fileAndDirInfo);
+        bool isSec = updateFileStatus_1(strList, fileAndDirInfo);
         if(!isSec && !m_strDir_QUUID.isEmpty()) {
             // 不同级 需要查找到对应的uuid文件夹
             AddRepoDeletedDir(strList, fileAndDirInfo);
@@ -1578,7 +1711,7 @@ bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password
     merge_opt.file_flags = GIT_MERGE_FILE_STYLE_DIFF3;
     checkout_opt = GIT_CHECKOUT_OPTIONS_INIT;
     checkout_opt.checkout_strategy = GIT_CHECKOUT_FORCE|GIT_CHECKOUT_ALLOW_CONFLICTS|GIT_CHECKOUT_USE_THEIRS;
-    error = git_status_foreach(repo, status_cb, nullptr);
+    git_status_foreach(repo, status_cb, nullptr);
     error = git_merge(repo, their_head, 1, &merge_opt, &checkout_opt);
     if (error < 0)
     {
@@ -1644,7 +1777,7 @@ bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password
             goto SHUTDOWN;
         }
     }
-    error = git_status_foreach(repo, status_cb, nullptr);
+    git_status_foreach(repo, status_cb, nullptr);
 
 
     git_commit_lookup(&their_commit, repo, git_reference_target(origin_master));
@@ -1689,6 +1822,7 @@ bool GitApiHandle::gitPull_2(QString prjName, QString username, QString password
 SHUTDOWN:
     if (error < 0) {
         emit signal_Error(git2_ExecuteError(error));
+        return false;
     }
     git_repository_state_cleanup(repo);
     git_index_free(index);

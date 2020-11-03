@@ -19,6 +19,7 @@ void GspCheckout::CheckoutVersion(QString userName, QString password, QString pr
     QString tmpLocal = RW_ConfigFile::getInstence()->getRepositoryPath() + prjName;
     QByteArray ba_path = tmpLocal.toUtf8();
     git_repository* rep = nullptr;
+    QByteArray ba_version = nullptr;
     ExecuteResult stResult; stResult.content = "回退成功！"; stResult.statusCode = "0";
     int error = 0;
     git_libgit2_init();
@@ -26,8 +27,14 @@ void GspCheckout::CheckoutVersion(QString userName, QString password, QString pr
     if (error < 0) {
         emit signal_Error(git2_ExecuteError(error));
         qDebug() << "本地存储库打开失败";
+        goto SHUTDOWN;
     }
-    QByteArray ba_version = checkoutVersion.toUtf8();
+    ba_version = checkoutVersion.toUtf8();
+
+    qDebug() << "fileList: "<<fileList.length();
+    foreach (QString file, fileList) {
+        qDebug() << "fileList: "<<file;
+    }
     if (fileList.isEmpty()) {
         qDebug() << "整个版本回退。";
         char* argc[2] = {"checkout", ba_version.data()};
@@ -50,14 +57,20 @@ void GspCheckout::CheckoutVersion(QString userName, QString password, QString pr
     if (error < 0) {
         emit signal_Error(git2_ExecuteError(error));
         qDebug() << "版本回退失败。";
+        goto SHUTDOWN;
+
     }
     else if (rep) {
         emit signal_CheckoutResult(stResult);
         qDebug() << "版本回退成功。";
     }
+
+SHUTDOWN:
     git_repository_free(rep);
     git_libgit2_shutdown();
+    return ;
 }
+
 
 /* Define the printf format specifer to use for size_t output */
 #if defined(_MSC_VER) || defined(__MINGW32__)

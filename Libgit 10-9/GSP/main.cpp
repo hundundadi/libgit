@@ -57,7 +57,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
 
 int main(int argc, char **argv)
 {
-#if 0 // 服务启动用
+#if 1 // 服务启动用
     qInstallMessageHandler(myMessageOutput);
 #if !defined(Q_OS_WIN)
     // QtService stores service settings in SystemScope, which normally require root privileges.

@@ -82,8 +82,10 @@ private:
     // status
     FileStatus getRepostoryFileAndDir(QString path, FileStatus &pramfile, int &iGrade);
     bool updateFileStatus(QStringList repFileList, FileStatus &fileList);
+    bool updateFileStatus_1(QStringList repFileList, FileStatus &fileList);
     void AddRepoDeletedDir(QStringList repFileList, FileStatus &fileList);
     void AddRepoDeletedFile(QStringList repFileList, FileStatus &fileList, int &iGrade);
+    void AddRepoDeletedFile_1(QStringList repFileList, FileStatus &fileList, int &iGrade);
     bool catchSignalFileLogVersion(QString fileRelativePath);
     QString m_strCurrentStatus;
     QString m_strCurrentVersion;
